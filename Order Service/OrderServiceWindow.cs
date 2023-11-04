@@ -502,11 +502,12 @@ namespace OrderService
                 PlayerEntity playerEntity = GameManager.Instance.PlayerEntity;
                 List<int> usedVariants = new List<int>();
                 int variantCounter = orderedItem.TotalVariants;
+
                 while (variantCounter >= 0)
                 {
                     if (orderData.IsArmor())
                     {
-                        variantItem = ItemBuilder.CreateItem(ItemGroups.Armor, orderedItem.TemplateIndex);
+                        variantItem = ItemBuilder.CreateItem(ItemGroups.Armor, (int)orderData.pickedArmr);
                         ItemBuilder.ApplyArmorSettings(variantItem, playerEntity.Gender, playerEntity.Race, orderData.GetArmorMat());
                         ItemBuilder.SetVariant(variantItem, variantCounter);
                         if (variantItem.LongName == orderedItem.LongName && !usedVariants.Contains(variantItem.CurrentVariant))
@@ -517,7 +518,7 @@ namespace OrderService
                     }
                     else if (orderData.IsWeapon())
                     {
-                        variantItem = ItemBuilder.CreateItem(ItemGroups.Weapons, orderedItem.TemplateIndex);
+                        variantItem = ItemBuilder.CreateItem(ItemGroups.Weapons, orderData.pickedWpnTemplate);
                         ItemBuilder.ApplyWeaponMaterial(variantItem, orderData.GetWeaponMat());
                         //ItemBuilder.SetVariant(variantItem, variantCounter);
                         orderedItemVariants.AddItem(variantItem);

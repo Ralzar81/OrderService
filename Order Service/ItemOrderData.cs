@@ -8,19 +8,20 @@ using DaggerfallWorkshop.Game.Serialization;
 
 namespace OrderService
 {
+    [FullSerializer.fsObject("v1")]
     public class ItemOrderData
     {
-        private string sceneName;
-        private ulong timeStarted = 0;
-        private ulong timeFinished = 0;
-        private WeaponMaterialTypes pickedWpnMat = WeaponMaterialTypes.None;
-        private ArmorMaterialTypes pickedArmrMat = ArmorMaterialTypes.None;
-        private int pickedWpnTemplate;
-        private Armor pickedArmr;
-        private bool isPlate;
-        private bool isChain;
-        private bool isLeather;
-        private DaggerfallUnityItem orderedItem;
+        public string sceneName;
+        public ulong timeStarted = 0;
+        public ulong timeFinished = 0;
+        public WeaponMaterialTypes pickedWpnMat = WeaponMaterialTypes.None;
+        public ArmorMaterialTypes pickedArmrMat = ArmorMaterialTypes.None;
+        public int pickedWpnTemplate;
+        public Armor pickedArmr;
+        public bool isPlate;
+        public bool isChain;
+        public bool isLeather;
+        public DaggerfallUnityItem orderedItem;
 
         public void OrderNewItem(int forgeDays)
         {
@@ -32,8 +33,7 @@ namespace OrderService
                 Debug.Log("orderedItem = " + orderedItem.LongName);
                 ItemBuilder.ApplyWeaponMaterial(orderedItem, pickedWpnMat);
                 Debug.Log("orderedItem = " + orderedItem.LongName);
-            }
-                
+            }   
             else if (IsArmor())
             {
                 orderedItem = ItemBuilder.CreateArmor(playerEntity.Gender, playerEntity.Race, pickedArmr, pickedArmrMat);

@@ -23,6 +23,9 @@ namespace OrderService
     public class OrderServiceSaveData
     {
         public List<ItemOrderData> SavedOrderedItems;
+        public bool rprWpnsMod;
+        public bool rprArmrMod;
+        public bool crossbwsMod;
     }
     public class OrderService : MonoBehaviour, IHasModSaveData
     {
@@ -43,14 +46,21 @@ namespace OrderService
         {
             return new OrderServiceSaveData
             {
-                SavedOrderedItems = OrderedItems
+                SavedOrderedItems = OrderedItems,
+                rprWpnsMod = RpriWpns,
+                rprArmrMod = RpriArmrs,
+                crossbwsMod = CrossbowsMod
             };
         }
 
         public void RestoreSaveData(object saveData)
         {
             var orderServiceSaveData = (OrderServiceSaveData)saveData;
-            OrderedItems = orderServiceSaveData.SavedOrderedItems;
+
+            if ((orderServiceSaveData.rprWpnsMod && !RpriWpns) || (orderServiceSaveData.rprArmrMod && !RpriArmrs) || (orderServiceSaveData.crossbwsMod && !CrossbowsMod))
+                OrderedItems = new List<ItemOrderData>();
+            else
+                OrderedItems = orderServiceSaveData.SavedOrderedItems;
         }
 
         private static Mod mod;
@@ -61,7 +71,7 @@ namespace OrderService
         static StaticNPC npc = QuestMachine.Instance.LastNPCClicked;
         static PlayerEnterExit playerEnterExit = GameManager.Instance.PlayerEnterExit;
         public static DFLocation.BuildingTypes buildingType;
-        static public List<ItemOrderData> OrderedItems;
+        static public List<ItemOrderData> OrderedItems = new List<ItemOrderData>();
         static public bool RpriArmrs = false;
         static public bool RpriWpns = false;
         static public bool CrossbowsMod = false;
@@ -96,7 +106,6 @@ namespace OrderService
         private void Start()
         {
             DaggerfallUI.UIManager.OnWindowChange += UIManager_OnWindowChange;
-            OrderedItems = new List<ItemOrderData>();
         }
 
         private void UIManager_OnWindowChange(object sender, EventArgs e)
