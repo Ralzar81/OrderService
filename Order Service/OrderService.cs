@@ -19,6 +19,7 @@ using DaggerfallWorkshop.Game.Serialization;
 
 namespace OrderService
 {
+    [FullSerializer.fsObject("v1")]
     public class OrderServiceSaveData
     {
         public List<ItemOrderData> SavedOrderedItems;
