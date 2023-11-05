@@ -16,33 +16,34 @@ namespace OrderService
         public ulong timeFinished = 0;
         public WeaponMaterialTypes pickedWpnMat = WeaponMaterialTypes.None;
         public ArmorMaterialTypes pickedArmrMat = ArmorMaterialTypes.None;
-        public int pickedWpnTemplate;
-        public Armor pickedArmr;
+        public int pickedItemTemplate;
         public bool isPlate;
         public bool isChain;
         public bool isLeather;
-        public DaggerfallUnityItem orderedItem;
+        public bool isHelmet;
+        public bool isShield;
+        public string orderName;
+        public int value;
 
         public void OrderNewItem(int forgeDays)
         {
+            DaggerfallUnityItem orderedItem;
             PlayerEntity playerEntity = GameManager.Instance.PlayerEntity;
             if (IsWeapon())
             {
-                Debug.Log("templateIndex = " + pickedWpnTemplate.ToString());
-                orderedItem = ItemBuilder.CreateItem(ItemGroups.Weapons, pickedWpnTemplate);
-                Debug.Log("orderedItem = " + orderedItem.LongName);
+                orderedItem = ItemBuilder.CreateItem(ItemGroups.Weapons, pickedItemTemplate);
                 ItemBuilder.ApplyWeaponMaterial(orderedItem, pickedWpnMat);
-                Debug.Log("orderedItem = " + orderedItem.LongName);
+                orderName = orderedItem.LongName;
+                value = orderedItem.value;
             }   
             else if (IsArmor())
             {
-                orderedItem = ItemBuilder.CreateArmor(playerEntity.Gender, playerEntity.Race, pickedArmr, pickedArmrMat);
-                int templateIndex = orderedItem.TemplateIndex;
+                int templateIndex = pickedItemTemplate;
                 if (OrderService.RpriArmrs && (isLeather || isChain))
                 {
                     if (isLeather)
                     {
-                        switch (pickedArmr)
+                        switch ((Armor)pickedItemTemplate)
                         {
                             case Armor.Cuirass:
                                 templateIndex = 520;
@@ -68,7 +69,7 @@ namespace OrderService
                         }
                     }
                     else
-                        switch (pickedArmr)
+                        switch ((Armor)pickedItemTemplate)
                         {
                             case Armor.Cuirass:
                                 templateIndex = 515;
@@ -86,12 +87,16 @@ namespace OrderService
                                 templateIndex = 518;
                                 break;
                         }
-
-                    orderedItem = ItemBuilder.CreateItem(ItemGroups.Armor, templateIndex);
-                    ItemBuilder.ApplyArmorSettings(orderedItem, playerEntity.Gender, playerEntity.Race, pickedArmrMat);
+                    pickedItemTemplate = templateIndex;
                 }
-            }    
-                
+                orderedItem = ItemBuilder.CreateItem(ItemGroups.Armor, pickedItemTemplate);
+                ItemBuilder.ApplyArmorSettings(orderedItem, playerEntity.Gender, playerEntity.Race, pickedArmrMat);
+                isHelmet = orderedItem.EquipSlot == EquipSlots.Head ? true : false;
+                isShield = orderedItem.IsShield;
+                orderName = orderedItem.LongName;
+                value = orderedItem.value;
+
+            }
             sceneName = GameManager.Instance.PlayerEnterExit.Interior.name;
             timeStarted = DaggerfallUnity.Instance.WorldTime.Now.ToSeconds();
             timeFinished = timeStarted + (ulong)(forgeDays * DaggerfallDateTime.SecondsPerDay);
@@ -126,28 +131,15 @@ namespace OrderService
 
         public bool IsCompleteOrder()
         {
-            if (sceneName != null && timeStarted != 0 && timeFinished != 0 && orderedItem != null)
+            if (sceneName != null && timeStarted != 0 && timeFinished != 0 && pickedItemTemplate != 0 && orderName != null)
                 return true;
             else
                 return false;
         }
 
-        public DaggerfallUnityItem GetItem()
+        public void SetTemplate(int item)
         {
-            if (orderedItem != null)
-                return orderedItem;
-            else
-                return null;
-        }
-
-        public void SetArmor(Armor armor)
-        {
-            pickedArmr = armor;
-        }
-
-        public void SetWeapon(int weapon)
-        {
-            pickedWpnTemplate = weapon;
+            pickedItemTemplate = item;
         }
 
         public void SetArmorMat(ArmorMaterialTypes material)
@@ -157,7 +149,6 @@ namespace OrderService
 
         public void SetWeaponMat(WeaponMaterialTypes material)
         {
-            Debug.Log("SetWeaponMat material = " + material.ToString());
             pickedWpnMat = material;
         }
 
@@ -184,51 +175,15 @@ namespace OrderService
                 return false;
         }
 
-        public Armor GetArmor()
-        {
-            return pickedArmr;
-        }
-
-        public Weapons GetWeapon()
-        {
-            if (pickedWpnTemplate >= 132)
-                return Weapons.Arrow;
-            else
-                return (Weapons)pickedWpnTemplate;
-        }
-
-        public ArmorMaterialTypes GetArmorMat()
-        {
-            return pickedArmrMat;
-        }
-
-        public WeaponMaterialTypes GetWeaponMat()
-        {
-            return pickedWpnMat;
-        }
-
-        public bool IsHelmet()
-        {
-            if (orderedItem.EquipSlot == EquipSlots.Head)
-                return true;
-            else
-                return false;
-        }
-
-        public bool IsShield()
-        {
-            return orderedItem.IsShield;
-        }
-
         public int GetVariants()
         {
             if (IsArmor())
             {
-                if (IsHelmet() || IsShield())
-                    return orderedItem.TotalVariants;
+                if (isHelmet && !isLeather)
+                    return 6;
                 if (isPlate)
                 {
-                    switch ((int)orderedItem.TemplateIndex)
+                    switch (pickedItemTemplate)
                     {
                         case (int)Armor.Cuirass:
                         case (int)Armor.Left_Pauldron:
@@ -240,7 +195,7 @@ namespace OrderService
                             return 2;
                     }
                 }
-                else if (isLeather && (int)orderedItem.TemplateIndex == (int)Armor.Greaves)
+                else if (isLeather && pickedItemTemplate == (int)Armor.Greaves)
                     return 2;
             }
 

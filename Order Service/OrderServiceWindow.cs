@@ -12,6 +12,7 @@ using DaggerfallWorkshop.Utility.AssetInjection;
 using System.Linq;
 using DaggerfallWorkshop.Game.Items;
 using System.Collections.Generic;
+using DaggerfallWorkshop.Utility;
 
 namespace OrderService
 {
@@ -20,6 +21,8 @@ namespace OrderService
         int orderCost;
         static string currentScene;
         static ItemOrderData orderData;
+        static bool orderingHelmet;
+        static bool orderingShield;
         #region UI Rects
 
         Rect repairButtonRect = new Rect(5, 5, 120, 7); 
@@ -66,8 +69,6 @@ namespace OrderService
         {
             ParentPanel.BackgroundColor = Color.clear;
             merchantNPC = npc;
-
-            Debug.Log("[Order Service] OrderServiceWindow opened");
         }
 
         #endregion
@@ -173,11 +174,11 @@ namespace OrderService
             else if (orderData.IsCompleteOrder() && !ready)
             {
                 if (orderData.DaysLeft() <= 0 )
-                    DaggerfallUI.MessageBox("Your " + orderData.GetItem().LongName + " should be ready later today.");
+                    DaggerfallUI.MessageBox("Your " + orderData.orderName + " should be ready later today.");
                 else if (orderData.DaysLeft() == 1)
-                    DaggerfallUI.MessageBox("Your " + orderData.GetItem().LongName + " should be ready tomorrow.");
+                    DaggerfallUI.MessageBox("Your " + orderData.orderName + " should be ready tomorrow.");
                 else
-                    DaggerfallUI.MessageBox("Your " + orderData.GetItem().LongName + " should be ready in " + orderData.DaysLeft() + " days.");
+                    DaggerfallUI.MessageBox("Your " + orderData.orderName + " should be ready in " + orderData.DaysLeft() + " days.");
             }
             else
             {
@@ -274,14 +275,14 @@ namespace OrderService
         {
             DaggerfallUI.Instance.PlayOneShot(SoundClips.ButtonClick);
             DaggerfallUI.UIManager.PopWindow();
-            orderData.SetArmor(GetArmrType(armrString));
+            orderData.SetTemplate((int)GetArmrTemplate(armrString));
             DaggerfallListPickerWindow typePicker = new DaggerfallListPickerWindow(uiManager, uiManager.TopWindow);
             typePicker.OnItemPicked += OfferMat_OnTypePicked;
             typePicker.ListBox.AddItem("Leather");
             typePicker.ListBox.AddItem("Chain");
             typePicker.ListBox.AddItem("Plate");
 
-            if (ShieldCheck(GetArmrType(armrString)))
+            if (ShieldCheck(GetArmrTemplate(armrString)))
                 OfferMat_OnTypePicked(3, "Plate");
             else if (typePicker.ListBox.Count > 0)
                 uiManager.PushWindow(typePicker);
@@ -311,7 +312,7 @@ namespace OrderService
             Debug.Log("[Order Service] maxMaterial = " + maxMaterial.ToString());
             if (OrderService.buildingType == DFLocation.BuildingTypes.WeaponSmith)
             {
-                orderData.SetWeapon(GetWpnTemplate(typeString));
+                orderData.SetTemplate(GetWpnTemplate(typeString));
                 List<WeaponMaterialTypes> wpnMats = Enum.GetValues(typeof(WeaponMaterialTypes)).Cast<WeaponMaterialTypes>().ToList();
                 materialPicker.OnItemPicked += WpnOrder_OnMatPicked;
                 foreach (WeaponMaterialTypes material in wpnMats)
@@ -364,7 +365,7 @@ namespace OrderService
                 }     
                 else if (index == 1)
                 {
-                    if (OrderService.RpriArmrs)
+                    if (OrderService.RpriArmrs && !orderingHelmet && !orderingShield)
                     {
                         Debug.Log("[Order Service] listing chain materials");
                         materialPicker.OnItemPicked += ArmrOrder_OnMatPicked;
@@ -386,8 +387,7 @@ namespace OrderService
                     }
                     else
                         ArmrOrder_OnMatPicked(0, "Chain");
-                }
-                    
+                }   
                 else
                 {
                     materialPicker.OnItemPicked += ArmrOrder_OnMatPicked;
@@ -415,9 +415,9 @@ namespace OrderService
             DaggerfallUI.Instance.PlayOneShot(SoundClips.ButtonClick);
             DaggerfallUI.UIManager.PopWindow();
             orderData.SetWeaponMat(GetWpnMaterial(matName));
-            int days = GetDaysWpn(orderData.GetWeapon(), orderData.GetWeaponMat());
+            int days = GetDaysWpn(orderData.pickedItemTemplate, orderData.pickedWpnMat);
             orderData.OrderNewItem(days);
-            OfferOrderPopupBox(orderData.GetItem(), days);
+            OfferOrderPopupBox(days);
         }
 
         protected virtual void ArmrOrder_OnMatPicked(int index, string matName)
@@ -425,23 +425,23 @@ namespace OrderService
             DaggerfallUI.Instance.PlayOneShot(SoundClips.ButtonClick);
             DaggerfallUI.UIManager.PopWindow();
             orderData.SetArmorMat(GetArmrMaterial(matName));
-            int days = GetDaysArmr(orderData.GetArmor(), orderData.GetArmorMat());
+            int days = GetDaysArmr(orderData.pickedItemTemplate, orderData.pickedArmrMat);
             orderData.OrderNewItem(days);
-            OfferOrderPopupBox(orderData.GetItem(), days);
+            OfferOrderPopupBox(days);
         }
 
-        protected virtual void OfferOrderPopupBox(DaggerfallUnityItem orderItem, int days)
+        protected virtual void OfferOrderPopupBox(int days)
         {
             DaggerfallUI.Instance.PlayOneShot(SoundClips.ButtonClick);
             DaggerfallUI.UIManager.PopWindow();
-            int itemCost = (int)(orderItem.value * 1.1);
+            int itemCost = (int)(orderData.value * 1.1f);
             int buildQuality = GameManager.Instance.PlayerEnterExit.Interior.BuildingData.Quality;
             orderCost = FormulaHelper.CalculateTradePrice(itemCost, buildQuality, false);
 
             DaggerfallMessageBox offerPopUp = new DaggerfallMessageBox(DaggerfallUI.UIManager, DaggerfallUI.UIManager.TopWindow);
             string[] message =
             {
-                "You want me to make you a " + orderItem.LongName + " eh?",
+                "You want me to make you a " + orderData.orderName + " eh?",
                 "That will take me about " + days.ToString() + " days to complete",
                 "and cost you " + orderCost.ToString() + " gold. Payment in advance of course.",
                 "",
@@ -491,26 +491,24 @@ namespace OrderService
             DaggerfallUI.Instance.PlayOneShot(SoundClips.ButtonClick);
             DaggerfallUI.UIManager.PopWindow();
             int flags = 0;
-            DaggerfallUnityItem orderedItem = orderData.GetItem();
-            DaggerfallUnityItem variantItem;
+            DaggerfallUnityItem variantItem = ItemBuilder.CreateItem(ItemGroups.UselessItems2, (int)UselessItems2.Parchment);
             int variants = orderData.GetVariants();
-            Debug.Log("orderedItem.LongName = " + orderedItem.LongName);
 
             if ((orderData.IsArmor() || orderData.IsWeapon()))
             {
                 ItemCollection orderedItemVariants = new ItemCollection();
                 PlayerEntity playerEntity = GameManager.Instance.PlayerEntity;
                 List<int> usedVariants = new List<int>();
-                int variantCounter = orderedItem.TotalVariants;
-
+                int variantCounter = orderData.GetVariants();
                 while (variantCounter >= 0)
                 {
                     if (orderData.IsArmor())
                     {
-                        variantItem = ItemBuilder.CreateItem(ItemGroups.Armor, (int)orderData.pickedArmr);
-                        ItemBuilder.ApplyArmorSettings(variantItem, playerEntity.Gender, playerEntity.Race, orderData.GetArmorMat());
-                        ItemBuilder.SetVariant(variantItem, variantCounter);
-                        if (variantItem.LongName == orderedItem.LongName && !usedVariants.Contains(variantItem.CurrentVariant))
+                        variantItem = ItemBuilder.CreateItem(ItemGroups.Armor, orderData.pickedItemTemplate);
+                        ItemBuilder.ApplyArmorSettings(variantItem, playerEntity.Gender, playerEntity.Race, orderData.pickedArmrMat);
+                        if(orderData.GetVariants() >= 2)
+                            ItemBuilder.SetVariant(variantItem, variantCounter);
+                        if (variantItem.LongName == orderData.orderName && !usedVariants.Contains(variantItem.CurrentVariant))
                         {
                             usedVariants.Add(variantItem.CurrentVariant);
                             orderedItemVariants.AddItem(variantItem);
@@ -518,22 +516,38 @@ namespace OrderService
                     }
                     else if (orderData.IsWeapon())
                     {
-                        variantItem = ItemBuilder.CreateItem(ItemGroups.Weapons, orderData.pickedWpnTemplate);
-                        ItemBuilder.ApplyWeaponMaterial(variantItem, orderData.GetWeaponMat());
-                        //ItemBuilder.SetVariant(variantItem, variantCounter);
-                        orderedItemVariants.AddItem(variantItem);
+                        variantItem = ItemBuilder.CreateItem(ItemGroups.Weapons, orderData.pickedItemTemplate);
+                        ItemBuilder.ApplyWeaponMaterial(variantItem, orderData.pickedWpnMat);
+                        if (orderData.GetVariants() >= 2)
+                            ItemBuilder.SetVariant(variantItem, variantCounter);
+                        if (variantItem.LongName == orderData.orderName && !usedVariants.Contains(variantItem.CurrentVariant))
+                        {
+                            usedVariants.Add(variantItem.CurrentVariant);
+                            orderedItemVariants.AddItem(variantItem);
+                         }
                     }
                     
                     variantCounter--;
                 }
-                
-                DaggerfallUI.Instance.InventoryWindow.SetChooseOne(orderedItemVariants, item => flags = flags);
-                DaggerfallUI.PostMessage(DaggerfallUIMessages.dfuiOpenInventoryWindow);
+                if (orderedItemVariants.Count >= 2)
+                {
+                    DaggerfallUI.Instance.InventoryWindow.SetChooseOne(orderedItemVariants, item => flags = flags);
+                    DaggerfallUI.PostMessage(DaggerfallUIMessages.dfuiOpenInventoryWindow);
+                }
+                else if (orderedItemVariants.Count == 1)
+                {
+                    DaggerfallLoot singleItem = GameObjectHelper.CreateDroppedLootContainer(GameManager.Instance.PlayerObject, DaggerfallUnity.NextUID);
+                    singleItem.ContainerImage = InventoryContainerImages.Anvil;
+                    singleItem.Items.AddItem(variantItem);
+                    DaggerfallUI.Instance.InventoryWindow.LootTarget = singleItem;
+                    DaggerfallUI.PostMessage(DaggerfallUIMessages.dfuiOpenInventoryWindow);
+                }
+                else
+                    DaggerfallUI.MessageBox("Hm, I can not seem to find your order.");
             }
             else
             {
-                DaggerfallUI.MessageBox("Here is your " + orderData.GetItem().LongName + ".");
-                GameManager.Instance.PlayerEntity.Items.AddItem(orderData.GetItem());
+                DaggerfallUI.MessageBox("What are you talking about?.");
             }
 
 
@@ -629,7 +643,7 @@ namespace OrderService
             return (int)Weapons.Dagger;
         }
 
-        static Armor GetArmrType(string armorString)
+        static Armor GetArmrTemplate(string armorString)
         {
 
             armorString = armorString.Replace(" ", "_");
@@ -642,6 +656,8 @@ namespace OrderService
                 if (armor.ToString() == armorString)
                     returnArmor = armor;
             }
+            orderingHelmet = returnArmor == Armor.Helm ? true : false;
+            orderingShield = (returnArmor == Armor.Buckler || returnArmor == Armor.Round_Shield || returnArmor == Armor.Kite_Shield || returnArmor == Armor.Tower_Shield) ? true : false;
             return returnArmor;
         }
 
@@ -653,10 +669,14 @@ namespace OrderService
                 return false;
         }
 
-        static int GetDaysWpn(Weapons wpnType, WeaponMaterialTypes wpnMat)
+        static int GetDaysWpn(int wpnTemplate, WeaponMaterialTypes wpnMat)
         {
+            Weapons weapon = Weapons.Arrow;
+            if (wpnTemplate <= 131)
+                weapon = (Weapons)wpnTemplate;
+
             int days = 0;
-            switch (wpnType)
+            switch (weapon)
             {
                 case Weapons.Claymore:
                 case Weapons.War_Axe:
@@ -708,10 +728,10 @@ namespace OrderService
             return days;
         }
 
-        static int GetDaysArmr(Armor armrType, ArmorMaterialTypes armrMat)
+        static int GetDaysArmr(int itemTemplate, ArmorMaterialTypes armrMat)
         {
             int days = 0;
-            switch (armrType)
+            switch ((Armor)itemTemplate)
             {
                 case Armor.Cuirass:
                 case Armor.Tower_Shield:
@@ -756,7 +776,10 @@ namespace OrderService
         {
             currentScene = GameManager.Instance.PlayerEnterExit.Interior.name;
             orderData = new ItemOrderData();
+            orderingHelmet = false;
+            orderingShield = false;
 
+            Debug.Log("currentScene = " + currentScene.ToString());
             foreach (ItemOrderData order in OrderService.OrderedItems)
             {
                 if (order.OrderedHere(currentScene))
@@ -764,6 +787,7 @@ namespace OrderService
             }
 
             Debug.Log("[Order Service] OrderReady = " + orderData.OrderReady().ToString());
+            Debug.Log("[Order Service] IsCompleteOrder = " + orderData.IsCompleteOrder().ToString());
         }
 
         static string GetButtonLabel()

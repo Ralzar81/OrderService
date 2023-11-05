@@ -9,6 +9,7 @@
         "Assets/Game/Mods/Order Service/OrderService.cs",
         "Assets/Game/Mods/Order Service/OrderServiceWindow.cs",
         "Assets/Game/Mods/Order Service/Textures/BLANKMENU_4.png",
-        "Assets/Game/Mods/Order Service/ItemOrderData.cs"
+        "Assets/Game/Mods/Order Service/ItemOrderData.cs",
+        "Assets/Game/Mods/Order Service/OrderService.dfmod.json"
     ]
 }
