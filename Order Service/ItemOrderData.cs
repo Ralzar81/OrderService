@@ -94,8 +94,13 @@ namespace OrderService
                 isHelmet = orderedItem.EquipSlot == EquipSlots.Head ? true : false;
                 isShield = orderedItem.IsShield;
                 orderName = orderedItem.LongName;
+                value = orderedItem.value+50;
+            }
+            else
+            {
+                orderedItem = ItemBuilder.CreateItem(ItemGroups.MensClothing, pickedItemTemplate);
+                orderName = orderedItem.LongName;
                 value = orderedItem.value;
-
             }
             sceneName = GameManager.Instance.PlayerEnterExit.Interior.name;
             timeStarted = DaggerfallUnity.Instance.WorldTime.Now.ToSeconds();
@@ -197,6 +202,10 @@ namespace OrderService
                 }
                 else if (isLeather && pickedItemTemplate == (int)Armor.Greaves)
                     return 2;
+            }
+            else if (!IsWeapon())
+            {
+                return 1;
             }
 
             return 1;

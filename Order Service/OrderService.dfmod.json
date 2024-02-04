@@ -1,13 +1,15 @@
 {
     "ModTitle": "OrderService",
-    "ModVersion": "1.0.0",
+    "ModVersion": "1.1.0",
     "ModAuthor": "Ralzar",
-    "DFUnity_Version": "0.16.1",
+    "DFUnity_Version": "1.0.0",
     "ModDescription": "Lets you order items from shops.",
     "GUID": "3e49da4c-bbca-4d8c-8483-be26f8556ecd",
     "Files": [
         "Assets/Game/Mods/Order Service/OrderService.cs",
-        "Assets/Game/Mods/Order Service/OrderServiceWindow.cs",
+        "Assets/Game/Mods/Order Service/RepairOrderWindow.cs",
+        "Assets/Game/Mods/Order Service/TailorOrderWindow.cs",
+        "Assets/Game/Mods/Order Service/Textures/BLANKMENU_3.png",
         "Assets/Game/Mods/Order Service/Textures/BLANKMENU_4.png",
         "Assets/Game/Mods/Order Service/ItemOrderData.cs",
         "Assets/Game/Mods/Order Service/OrderService.dfmod.json"

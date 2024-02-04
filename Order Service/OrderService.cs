@@ -65,8 +65,8 @@ namespace OrderService
 
         private static Mod mod;
         private static OrderService instance;
-        OrderServiceWindow orderWindow;
-        internal OrderServiceWindow GetOrderWindow() { return orderWindow; }
+        RepairOrderWindow orderWindow;
+        internal RepairOrderWindow GetOrderWindow() { return orderWindow; }
 
         static StaticNPC npc = QuestMachine.Instance.LastNPCClicked;
         static PlayerEnterExit playerEnterExit = GameManager.Instance.PlayerEnterExit;
@@ -111,12 +111,13 @@ namespace OrderService
         private void UIManager_OnWindowChange(object sender, EventArgs e)
         {
             buildingType = GameManager.Instance.PlayerEnterExit.BuildingDiscoveryData.buildingType;
-            if ((DaggerfallUI.Instance.UserInterfaceManager.TopWindow as DaggerfallMerchantRepairPopupWindow) != null
-                && (buildingType == DFLocation.BuildingTypes.Armorer || buildingType == DFLocation.BuildingTypes.WeaponSmith))
-                ReplaceRepairMenu();
+            if ((DaggerfallUI.Instance.UserInterfaceManager.TopWindow as DaggerfallMerchantRepairPopupWindow) != null || (DaggerfallUI.Instance.UserInterfaceManager.TopWindow as DaggerfallMerchantServicePopupWindow) != null)
+            {
+                    ReplaceMenu();
+            }
         }
 
-        public static void ReplaceRepairMenu()
+        public static void ReplaceMenu()
         {
             Debug.Log("[Order Service] Replacing Shop Menu");
             FactionFile.FactionData factionData;
@@ -131,12 +132,23 @@ namespace OrderService
 
                 if ((FactionFile.SocialGroups)factionData.sgroup == FactionFile.SocialGroups.Merchants && GameManager.Instance.PlayerEntity.FactionData.GetFactionData(npc.Data.factionID, out factionData))
                 {
-                    (DaggerfallUI.Instance.UserInterfaceManager.TopWindow as DaggerfallMerchantRepairPopupWindow).CloseWindow();
-                    OrderServiceWindow orderWindow = new OrderServiceWindow(DaggerfallUI.UIManager, npc);
-                    DaggerfallUI.UIManager.PushWindow(orderWindow);
+                    buildingType = GameManager.Instance.PlayerEnterExit.BuildingDiscoveryData.buildingType;
+                    if (buildingType == DFLocation.BuildingTypes.Armorer || buildingType == DFLocation.BuildingTypes.WeaponSmith)
+                    {
+                        (DaggerfallUI.Instance.UserInterfaceManager.TopWindow as DaggerfallMerchantRepairPopupWindow).CloseWindow();
+                        RepairOrderWindow orderWindow = new RepairOrderWindow(DaggerfallUI.UIManager, npc);
+                        DaggerfallUI.UIManager.PushWindow(orderWindow);
+                    }
+                    else if (buildingType == DFLocation.BuildingTypes.ClothingStore)
+                    {
+                        (DaggerfallUI.Instance.UserInterfaceManager.TopWindow as DaggerfallMerchantServicePopupWindow).CloseWindow();
+                        TailorOrderWindow orderWindow = new TailorOrderWindow(DaggerfallUI.UIManager, npc);
+                        DaggerfallUI.UIManager.PushWindow(orderWindow);
+                    }
+                        
                 }
             }
-            
+
         }
     }
 
